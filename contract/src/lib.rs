@@ -2,13 +2,10 @@ use near_contract_standards::fungible_token::Balance;
 use near_sdk::{
     borsh::{BorshDeserialize, BorshSerialize},
     collections::{LazyOption, UnorderedMap},
-    env, near_bindgen,
     serde::{Deserialize, Serialize},
-    AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue, Timestamp,
+    env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue, Timestamp,
+    json_types::U128
 };
-use std::convert::TryFrom;
-
-use crate::utils::FeeFraction;
 use near_contract_standards::non_fungible_token::core::NonFungibleTokenCore;
 use near_contract_standards::non_fungible_token::metadata::{
     NFTContractMetadata, NonFungibleTokenMetadataProvider, TokenMetadata,
@@ -16,8 +13,9 @@ use near_contract_standards::non_fungible_token::metadata::{
 use near_contract_standards::non_fungible_token::{
     NonFungibleToken, NonFungibleTokenEnumeration, Token, TokenId,
 };
-use near_sdk::json_types::U128;
+use std::convert::TryFrom;
 use serde_json::Value;
+use crate::utils::FeeFraction;
 
 mod utils;
 
@@ -34,6 +32,7 @@ enum StorageKey {
     TokenMetadataTemplate,
     InternalBalances,
     TokenPrices,
+    TokenLastSale,
     Referrals,
 }
 
@@ -51,6 +50,7 @@ pub struct Contract {
 
     internal_balances: UnorderedMap<AccountId, Balance>,
     token_prices: UnorderedMap<TokenId, Balance>,
+    token_last_sale: UnorderedMap<TokenId, Timestamp>,
     referrals: UnorderedMap<AccountId, AccountId>,
     mint_price_increase_fee: FeeFraction,
     seller_fee: FeeFraction,
@@ -104,6 +104,7 @@ impl Contract {
             ),
             internal_balances: UnorderedMap::new(StorageKey::InternalBalances),
             token_prices: UnorderedMap::new(StorageKey::TokenPrices),
+            token_last_sale: UnorderedMap::new(StorageKey::TokenLastSale),
             referrals: UnorderedMap::new(StorageKey::Referrals),
             mint_price_increase_fee,
             seller_fee,
@@ -147,6 +148,13 @@ impl Contract {
                         .parse()
                         .unwrap();
 
+                    if let Some(token_last_sale) = self.token_last_sale.get(&token_id) {
+                        assert!(
+                            timestamp >= token_last_sale,
+                            "Timestamp is older then last sale"
+                        );
+                    }
+
                     assert!(
                         timestamp + TIMESTAMP_MAX_INTERVAL >= env::block_timestamp(),
                         "Timestamp is too old"
@@ -179,7 +187,7 @@ impl Contract {
                         assert_ne!(seller_id, receiver_id, "Current and next owner must differ");
 
                         let seller_fee: Balance = self.seller_fee.multiply(profit);
-                        self.internal_add_balance(&seller_id, seller_fee);
+                        self.internal_add_balance(&seller_id, old_price + seller_fee);
 
                         // distribute affiliate reward
                         let mut referral_1_fee: Balance = 0;
@@ -212,7 +220,13 @@ impl Contract {
                             self.internal_add_balance(&self.owner_id.clone(), system_fee);
                         }
 
-                        self.tokens.internal_transfer(&seller_id, &receiver_id, &token_id, None, None);
+                        self.tokens.internal_transfer(
+                            &seller_id,
+                            &receiver_id,
+                            &token_id,
+                            None,
+                            None,
+                        );
 
                         token.clone()
                     } else {

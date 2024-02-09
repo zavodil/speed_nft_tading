@@ -1,5 +1,5 @@
-use near_sdk::{NearToken, Promise};
 use crate::*;
+use near_sdk::{NearToken, Promise};
 
 #[near_bindgen]
 impl Contract {
@@ -31,8 +31,10 @@ impl Contract {
 
     // returns [internal_balance, referral_id]
     pub fn get_account(&self, account_id: AccountId) -> (U128, Option<AccountId>) {
-        (U128::from(self.internal_balances.get(&account_id).unwrap_or_default()), self.referrals.get(&account_id))
-
+        (
+            U128::from(self.internal_balances.get(&account_id).unwrap_or_default()),
+            self.referrals.get(&account_id),
+        )
     }
 
     pub fn claim(&mut self, amount: Option<U128>) -> Promise {
@@ -42,12 +44,12 @@ impl Contract {
         let amount: Balance = if let Some(amount) = amount {
             assert!(balance >= amount.0, "Balance is too small");
             amount.0
-        }
-        else {
+        } else {
             balance
         };
 
-        self.internal_balances.insert(&account_id, &(balance - amount));
+        self.internal_balances
+            .insert(&account_id, &(balance - amount));
         Promise::new(account_id).transfer(NearToken::from_yoctonear(amount))
     }
 
