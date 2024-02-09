@@ -176,6 +176,8 @@ impl Contract {
 
                         // distribute seller reward
                         let seller_id: AccountId = token.owner_id.clone();
+                        assert_ne!(seller_id, receiver_id, "Current and next owner must differ");
+
                         let seller_fee: Balance = self.seller_fee.multiply(profit);
                         self.internal_add_balance(&seller_id, seller_fee);
 
