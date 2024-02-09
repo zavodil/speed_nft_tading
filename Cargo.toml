@@ -1,0 +1,37 @@
+[package]
+name = "nftinder"
+version = "0.1.0"
+authors = ["Vadim Ilin <vadim@near.org>"]
+edition = "2018"
+publish = false
+
+[lib]
+path = "contract/src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+near-sdk = "5.0.0-alpha.2"
+near-contract-standards = "5.0.0-alpha.2"
+serde_json = { version = "1.0", features = ["preserve_order"] }
+uint = { version = "=0.9.0", default-features = false }
+hex = "0.4.3"
+
+[dev-dependencies]
+insta = { version = "1.31.0", features = ["json", "redactions"] }
+regex = "1"
+near-workspaces = { version = "0.9.0", features = ["unstable"], default-features = false  }
+tokio = { version = "1.10.0", features = ["full"] }
+serde_json = { version = "1.0", features = ["arbitrary_precision"] }
+near-units = "0.2.0"
+anyhow = "1.0"
+
+[profile.release]
+codegen-units = 1
+opt-level = "z"
+lto = true
+debug = false
+panic = "abort"
+overflow-checks = true
+
+[workspace]
+members = []
