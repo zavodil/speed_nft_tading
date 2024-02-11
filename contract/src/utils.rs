@@ -1,5 +1,5 @@
 use crate::*;
-use near_sdk::{NearToken, Promise};
+use near_sdk::{log, NearToken, Promise};
 
 #[near_bindgen]
 impl Contract {
@@ -79,6 +79,8 @@ impl Contract {
             let prev_balance = self.internal_balances.get(account_id).unwrap_or_default();
             self.internal_balances
                 .insert(&account_id, &(prev_balance + value));
+
+            log!("internal_add_balance {} to {}", value, account_id)
 
             // TODO TODO emit event new reward
         }

@@ -1,11 +1,5 @@
+use crate::utils::FeeFraction;
 use near_contract_standards::fungible_token::Balance;
-use near_sdk::{
-    borsh::{BorshDeserialize, BorshSerialize},
-    collections::{LazyOption, UnorderedMap},
-    serde::{Deserialize, Serialize},
-    env, near_bindgen, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue, Timestamp,
-    json_types::U128
-};
 use near_contract_standards::non_fungible_token::core::NonFungibleTokenCore;
 use near_contract_standards::non_fungible_token::metadata::{
     NFTContractMetadata, NonFungibleTokenMetadataProvider, TokenMetadata,
@@ -13,10 +7,20 @@ use near_contract_standards::non_fungible_token::metadata::{
 use near_contract_standards::non_fungible_token::{
     NonFungibleToken, NonFungibleTokenEnumeration, Token, TokenId,
 };
-use std::convert::TryFrom;
+use near_sdk::{
+    borsh::{BorshDeserialize, BorshSerialize},
+    collections::{LazyOption, UnorderedMap},
+    env,
+    json_types::U128,
+    near_bindgen,
+    serde::{Deserialize, Serialize},
+    AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue, Timestamp,
+};
+use nft::*;
 use serde_json::Value;
-use crate::utils::FeeFraction;
+use std::convert::TryFrom;
 
+mod nft;
 mod utils;
 
 pub const TIMESTAMP_MAX_INTERVAL: u64 = 5 * 60 * 1_000_000_000;
@@ -26,7 +30,6 @@ pub const TIMESTAMP_MAX_INTERVAL: u64 = 5 * 60 * 1_000_000_000;
 enum StorageKey {
     NonFungibleToken,
     ContractMetadata,
-    TokenMetadata,
     Enumeration,
     Approval,
     TokenMetadataTemplate,
@@ -87,10 +90,9 @@ impl Contract {
             owner_id: owner_id.clone(),
             public_key,
             min_mint_price: min_mint_price.0,
-            tokens: NonFungibleToken::new(
+            tokens: nft_without_metadata(
                 StorageKey::NonFungibleToken,
                 owner_id,
-                Some(StorageKey::TokenMetadata),
                 Some(StorageKey::Enumeration),
                 Some(StorageKey::Approval),
             ),
@@ -162,10 +164,12 @@ impl Contract {
 
                     if let Some(referral_id) = parsed_json["referral_id"].as_str() {
                         assert_ne!(referral_id, receiver_id, "Can't refer yourself");
-                        self.referrals.insert(
-                            &receiver_id,
-                            &AccountId::try_from(referral_id.to_string()).unwrap(),
-                        );
+                        if self.referrals.get(&receiver_id).is_none() {
+                            self.referrals.insert(
+                                &receiver_id,
+                                &AccountId::try_from(referral_id.to_string()).unwrap(),
+                            );
+                        }
                         // TODO emit event new referral
                     }
 
@@ -231,10 +235,7 @@ impl Contract {
                         token.clone()
                     } else {
                         self.token_prices.insert(&token_id, &self.min_mint_price);
-                        let token_metadata = self.get_token_metadata(&token_id);
-
-                        self.tokens
-                            .internal_mint(token_id, receiver_id, Some(token_metadata))
+                        self.internal_mint_without_storage(token_id, receiver_id)
                     }
                 }
                 Err(e) => {
@@ -244,83 +245,6 @@ impl Contract {
         } else {
             env::panic_str("Signature check failed")
         }
-    }
-}
-
-impl Contract {
-    pub fn get_token_metadata(&self, token_id: &TokenId) -> TokenMetadata {
-        let mut token_metadata = self.token_metadata.get().unwrap();
-        token_metadata.media = Some(format!("ipfs://{}", token_id));
-
-        token_metadata
-    }
-}
-
-#[near_bindgen]
-impl NonFungibleTokenCore for Contract {
-    #[payable]
-    #[allow(unused)]
-    fn nft_transfer(
-        &mut self,
-        receiver_id: AccountId,
-        token_id: TokenId,
-        approval_id: Option<u64>,
-        memo: Option<String>,
-    ) {
-        env::panic_str("Not allowed")
-    }
-
-    #[payable]
-    #[allow(unused)]
-    fn nft_transfer_call(
-        &mut self,
-        receiver_id: AccountId,
-        token_id: TokenId,
-        approval_id: Option<u64>,
-        memo: Option<String>,
-        msg: String,
-    ) -> PromiseOrValue<bool> {
-        env::panic_str("Not allowed")
-    }
-
-    fn nft_token(&self, token_id: TokenId) -> Option<Token> {
-        self.tokens.nft_token(token_id)
-    }
-}
-
-#[near_bindgen]
-impl NonFungibleTokenEnumeration for Contract {
-    fn nft_total_supply(&self) -> near_sdk::json_types::U128 {
-        self.tokens.nft_total_supply()
-    }
-
-    fn nft_tokens(
-        &self,
-        from_index: Option<near_sdk::json_types::U128>,
-        limit: Option<u64>,
-    ) -> Vec<Token> {
-        self.tokens.nft_tokens(from_index, limit)
-    }
-
-    fn nft_supply_for_owner(&self, account_id: AccountId) -> near_sdk::json_types::U128 {
-        self.tokens.nft_supply_for_owner(account_id)
-    }
-
-    fn nft_tokens_for_owner(
-        &self,
-        account_id: AccountId,
-        from_index: Option<near_sdk::json_types::U128>,
-        limit: Option<u64>,
-    ) -> Vec<Token> {
-        self.tokens
-            .nft_tokens_for_owner(account_id, from_index, limit)
-    }
-}
-
-#[near_bindgen]
-impl NonFungibleTokenMetadataProvider for Contract {
-    fn nft_metadata(&self) -> NFTContractMetadata {
-        self.contract_metadata.get().unwrap()
     }
 }
 
