@@ -3,9 +3,21 @@ use near_sdk::{log, NearToken, Promise};
 
 #[near_bindgen]
 impl Contract {
+    pub fn set_store_user_tokens(&mut self, store_tokens: bool) {
+        self.store_user_tokens.insert(env::predecessor_account_id(), store_tokens);
+    }
+
+    pub fn get_store_user_tokens(&mut self, account_id: AccountId) -> bool {
+        self.store_user_tokens.get(&account_id).unwrap_or(&false).clone()
+    }
+
     pub fn set_min_mint_price(&mut self, min_mint_price: U128) {
         self.assert_owner();
         self.min_mint_price = min_mint_price.0;
+    }
+
+    pub fn get_public_key(&mut self) -> String {
+        self.public_key.clone()
     }
 
     pub fn set_public_key(&mut self, public_key: String) {
@@ -29,12 +41,8 @@ impl Contract {
         self.referral_2_fee = referral_2_fee;
     }
 
-    // returns [internal_balance, referral_id]
-    pub fn get_account(&self, account_id: AccountId) -> (U128, Option<AccountId>) {
-        (
-            U128::from(self.internal_balances.get(&account_id).unwrap_or_default()),
-            self.referrals.get(&account_id),
-        )
+    pub fn get_balance(&self, account_id: AccountId) -> U128 {
+        U128::from(self.internal_balances.get(&account_id).unwrap_or_default())
     }
 
     pub fn claim(&mut self, amount: Option<U128>) -> Promise {
