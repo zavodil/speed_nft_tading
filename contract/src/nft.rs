@@ -1,7 +1,7 @@
+use std::fmt::format;
 use crate::*;
 use near_sdk::collections::{LookupMap, TreeMap, UnorderedSet};
 use near_sdk::{require, IntoStorageKey};
-use std::collections::HashMap;
 
 impl Contract {
     pub fn get_token_metadata(&self, token_id: &TokenId) -> TokenMetadata {
@@ -54,51 +54,32 @@ impl Contract {
             tokens_per_owner.insert(&owner_id, &token_ids);
         }
 
-        // Approval Management extension: return empty HashMap as part of Token
-        let approved_account_ids = if self.tokens.approvals_by_id.is_some() {
-            Some(HashMap::new())
-        } else {
-            None
-        };
-
         Token {
             token_id,
             owner_id,
             metadata: None,
-            approved_account_ids,
+            approved_account_ids: None,
         }
     }
 }
 
-pub(crate) fn nft_without_metadata<Q, S, T>(
+pub(crate) fn nft_without_metadata<Q, S>(
     owner_by_id_prefix: Q,
     owner_id: AccountId,
-    enumeration_prefix: Option<S>,
-    approval_prefix: Option<T>,
+    enumeration_prefix: Option<S>
 ) -> NonFungibleToken
 where
     Q: IntoStorageKey,
-    S: IntoStorageKey,
-    T: IntoStorageKey,
+    S: IntoStorageKey
 {
-    let (approvals_by_id, next_approval_id_by_id) = if let Some(prefix) = approval_prefix {
-        let prefix: Vec<u8> = prefix.into_storage_key();
-        (
-            Some(LookupMap::new(prefix.clone())),
-            Some(LookupMap::new([prefix, "n".into()].concat())),
-        )
-    } else {
-        (None, None)
-    };
-
     NonFungibleToken {
         owner_id,
         extra_storage_in_bytes_per_token: 0,
         owner_by_id: TreeMap::new(owner_by_id_prefix),
         token_metadata_by_id: None,
         tokens_per_owner: enumeration_prefix.map(LookupMap::new),
-        approvals_by_id,
-        next_approval_id_by_id,
+        approvals_by_id: None,
+        next_approval_id_by_id: None,
     }
 
     // removed since extra_storage_in_bytes_per_token is not used anywhere in the nft standard
@@ -133,31 +114,27 @@ impl NonFungibleTokenCore for Contract {
     }
 
     fn nft_token(&self, token_id: TokenId) -> Option<Token> {
-        let owner_id = self.tokens.owner_by_id.get(&token_id)?;
+        let owner_id = self.tokens.owner_by_id.get(&token_id).expect("Not found");
         let metadata = self.get_token_metadata(&token_id);
-        let approved_account_ids = self
-            .tokens
-            .approvals_by_id
-            .as_ref()
-            .and_then(|by_id| by_id.get(&token_id).or_else(|| Some(HashMap::new())));
+
         Some(Token {
             token_id,
             owner_id,
             metadata: Some(metadata),
-            approved_account_ids,
+            approved_account_ids: None,
         })
-    }
+}
 }
 
 #[near_bindgen]
 impl NonFungibleTokenEnumeration for Contract {
-    fn nft_total_supply(&self) -> near_sdk::json_types::U128 {
+    fn nft_total_supply(&self) -> U128 {
         self.tokens.nft_total_supply()
     }
 
     fn nft_tokens(
         &self,
-        from_index: Option<near_sdk::json_types::U128>,
+        from_index: Option<U128>,
         limit: Option<u64>,
     ) -> Vec<Token> {
         // Get starting index, whether or not it was explicitly given.
@@ -226,4 +203,22 @@ impl NonFungibleTokenMetadataProvider for Contract {
     fn nft_metadata(&self) -> NFTContractMetadata {
         self.contract_metadata.get().unwrap()
     }
+}
+
+pub fn parse_token_id (token_id: TokenId) -> (TokenGeneration, TokenId) {
+    let parts: Vec<&str> = token_id.split(':').collect();
+
+    if parts.len() >= 2 {
+
+        let generation: TokenGeneration = parts[0].parse().unwrap_or_else(|_| { 0 });
+        let token_id = parts[1];
+
+        (generation, token_id.to_string())
+    } else {
+        (0, token_id)
+    }
+}
+
+pub fn generate_token_id (generation: &TokenGeneration, token_id: &TokenId) -> TokenId {
+    format!("{}:{}", generation, token_id)
 }
