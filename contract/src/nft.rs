@@ -1,4 +1,3 @@
-use std::fmt::format;
 use crate::*;
 use near_sdk::collections::{LookupMap, TreeMap, UnorderedSet};
 use near_sdk::{require, IntoStorageKey};

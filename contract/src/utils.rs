@@ -1,7 +1,4 @@
-use std::ops::Deref;
 use crate::*;
-use near_sdk::{log, NearToken, Promise};
-use near_sdk::env::predecessor_account_id;
 
 #[near_bindgen]
 impl Contract {
@@ -11,6 +8,15 @@ impl Contract {
 
     pub fn get_collection_items(&self, account_id: AccountId) -> StorageSize {
         self.get_user_collection_items(&account_id)
+    }
+
+    pub fn get_collection(&self, account_id: AccountId) -> Option<Vec<CollectionItem>> {
+        if let Some(collection) = self.get_user_collection(&account_id){
+            Some(collection.to_vec())
+        }
+        else {
+            None
+        }
     }
 
     pub fn set_store_user_tokens(&mut self, store_tokens: bool) {
@@ -56,7 +62,7 @@ impl Contract {
     }
 
     pub fn remove_user_collection_item(&mut self, generation: TokenGeneration, token_id: TokenId) {
-        let account_id = predecessor_account_id();
+        let account_id = env::predecessor_account_id();
 
         let mut user_collection = self.user_collection_items.get(&account_id).expect("Not found");
 
@@ -82,26 +88,15 @@ impl Contract {
         }
     }
 
-    pub fn claim(&mut self, amount: Option<U128>) -> Promise {
-        let account_id = env::predecessor_account_id();
-        let balance: Balance = self.internal_balances.get(&account_id).unwrap_or(&0u128).clone();
-
-        let amount: Balance = if let Some(amount) = amount {
-            assert!(balance >= amount.0, "Balance is too small");
-            amount.0
-        } else {
-            balance
-        };
-
-        self.internal_balances
-            .insert(account_id.clone(), balance - amount);
-
-        Promise::new(account_id).transfer(NearToken::from_yoctonear(amount))
-    }
-
     // returns [token, [generation, price, last_sale]]
     pub fn get_token(&self, token_id: TokenId) -> (Option<Token>, Option<(TokenGeneration, U128, Option<Timestamp>)>) {
         if let Some(token) = self.tokens.nft_token(token_id.clone()) {
+
+            // token from user collection
+            if token_id.contains(':') {
+                return (Some(token), None);
+            }
+
             let token_data = self.get_token_data(&token_id);
             (
                 Some(token),
@@ -114,6 +109,11 @@ impl Contract {
 
     // returns [token, next_price]
     pub fn get_token_for_sale(&self, token_id: TokenId) -> Option<(Token, U128)> {
+        // token from user collection
+        if token_id.contains(':') {
+            return None;
+        }
+
         if let Some(token) = self.tokens.nft_token(token_id.clone()) {
             let old_price: Balance = self.get_token_price(&token_id);
 
@@ -129,15 +129,6 @@ impl Contract {
 impl Contract {
     pub fn assert_owner(&self) {
         assert_eq!(self.owner_id, env::predecessor_account_id(), "Not an owner");
-    }
-
-    pub(crate) fn internal_add_balance(&mut self, account_id: &AccountId, value: Balance) {
-        if value > 0 {
-            let prev_balance: Balance = self.internal_balances.get(account_id).unwrap_or(&0u128).clone();
-            self.internal_balances.insert(account_id.clone(), prev_balance + value);
-
-            // TODO TODO emit event new reward
-        }
     }
 }
 
