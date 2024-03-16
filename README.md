@@ -12,12 +12,12 @@ Common Arguments
 
 `generation` - number of sales for a given `token_id`
 
-Server Parameters
+Global Parameters
 ======
 
 `get_ft_account_id` - whitelsited FT contract
 
-`get_public_key` - get Publick Key for signatures
+`get_public_key` - get Public Key for signatures
 
 Market
 ===
