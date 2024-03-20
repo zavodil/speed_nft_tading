@@ -7,8 +7,7 @@ impl Contract {
     pub(crate) fn get_new_token_data(&self) -> TokenData {
         TokenData {
             generation: 0u32,
-            price: self.min_mint_price,
-            last_sale: None
+            price: self.min_mint_price
         }
     }
 
@@ -98,6 +97,16 @@ impl Contract {
                     "Timestamp is too old"
                 );
 
+                if let Some(user_last_action) = self.last_user_action.get(&account_id) {
+                    assert!(
+                        timestamp > *user_last_action,
+                        "Timestamp is smaller then last user's action"
+                    );
+                }
+
+                // save buyer's action
+                self.last_user_action.insert(account_id, env::block_timestamp());
+
                 if let Some(token) = self.tokens.nft_token(token_id.clone()) {
                     // token already exists
                     assert!(remaining_gas() >= GAS_FOR_RESALE, "Attach more gas");
@@ -105,13 +114,6 @@ impl Contract {
                     let token_data: TokenData = self.get_token_data(&token_id);
                     let old_price: Balance = token_data.price;
                     let old_generation: TokenGeneration = token_data.generation;
-
-                    if let Some(token_last_sale) = token_data.last_sale {
-                        assert!(
-                            timestamp >= token_last_sale,
-                            "Timestamp is older then last sale"
-                        );
-                    }
 
                     let price_increase = self.mint_price_increase_fee.multiply(old_price);
                     let new_price = old_price + price_increase;
@@ -132,7 +134,7 @@ impl Contract {
 
                     // update token data
                     self.token_data.insert(token_id.clone(),
-                                           TokenData { generation: old_generation + 1, price: new_price, last_sale: Some(env::block_timestamp())});
+                                           TokenData { generation: old_generation + 1, price: new_price});
 
                     // distribute affiliate reward
                     let mut referral_1_fee: Balance = 0;
@@ -182,12 +184,11 @@ impl Contract {
 
                 } else {
                     // create new token
-                    let old_price = self.min_mint_price;
+                    let min_price = self.min_mint_price;
 
-                    assert_deposit(deposit, old_price);
+                    assert_deposit(deposit, min_price);
 
-                    self.token_data.insert(token_id.clone(),
-                                           TokenData { generation: 0, price: old_price, last_sale: Some(env::block_timestamp())});
+                    self.token_data.insert(token_id.clone(), TokenData { generation: 0, price: min_price });
                     self.internal_mint_without_storage(token_id, receiver_id);
 
                     PromiseOrValue::Value(true)

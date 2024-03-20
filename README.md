@@ -22,7 +22,7 @@ Global Parameters
 Market
 ===
 
-`get_token(token_id)` - returns [token, [generation, price, last_sale_timestamp]]
+`get_token(token_id)` - returns [token, [generation, price]]
 
 `get_token_for_sale(token_id)` - returns [token, next_price]
 

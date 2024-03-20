@@ -88,8 +88,8 @@ impl Contract {
         }
     }
 
-    // returns [token, [generation, price, last_sale]]
-    pub fn get_token(&self, token_id: TokenId) -> (Option<Token>, Option<(TokenGeneration, U128, Option<Timestamp>)>) {
+    // returns [token, [generation, price]]
+    pub fn get_token(&self, token_id: TokenId) -> (Option<Token>, Option<(TokenGeneration, U128)>) {
         if let Some(token) = self.tokens.nft_token(token_id.clone()) {
 
             // token from user collection
@@ -100,7 +100,7 @@ impl Contract {
             let token_data = self.get_token_data(&token_id);
             (
                 Some(token),
-                Some((token_data.generation, U128::from(token_data.price), token_data.last_sale))
+                Some((token_data.generation, U128::from(token_data.price)))
             )
         } else {
             (None, None)

@@ -30,7 +30,8 @@ enum StorageKey {
     StoreUserTokens,
     UserCollectionItems,
     UserCollectionItemsPerOwner { account_hash: Vec<u8> },
-    TokenData
+    TokenData,
+    LastUserAction
 }
 
 pub type TokenGeneration = u32; // ~ 4.3M resales
@@ -40,8 +41,7 @@ pub type StorageSize = u64;
 #[borsh(crate = "near_sdk::borsh")]
 struct TokenData {
     generation: TokenGeneration,
-    price: Balance,
-    last_sale: Option<Timestamp>,
+    price: Balance
 }
 
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Clone, Serialize)]
@@ -74,6 +74,9 @@ pub struct Contract {
 
     // generation, price, last_sale
     token_data: LookupMap<TokenId, TokenData>,
+
+    // timestamp of the last purchase to avoid double usage of the signature
+    last_user_action: LookupMap<AccountId, Timestamp>,
 
     // tokens in user collections
     //user_collection_items_1: LookupMap<AccountId, Vec<CollectionItem>>,
@@ -148,6 +151,7 @@ impl Contract {
             internal_balances: LookupMap::new(StorageKey::InternalBalances),
             is_store_user_tokens: LookupMap::new(StorageKey::StoreUserTokens),
             token_data: LookupMap::new(StorageKey::TokenData),
+            last_user_action: LookupMap::new(StorageKey::LastUserAction),
             user_collection_items: UnorderedMap::new(StorageKey::UserCollectionItems),
             mint_price_increase_fee,
             seller_fee,
