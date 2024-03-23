@@ -60,6 +60,17 @@ impl Contract {
             approved_account_ids: None,
         }
     }
+
+    pub(crate) fn internal_total_supply_by_user(&self, account_id: &AccountId) -> StorageSize {
+        if let Some(tokens_per_owner) = self.tokens.tokens_per_owner.as_ref() {
+            tokens_per_owner
+                .get(account_id)
+                .map(|account_tokens| account_tokens.len() as StorageSize)
+                .unwrap_or_default()
+        } else {
+            0
+        }
+    }
 }
 
 pub(crate) fn nft_without_metadata<Q, S>(
@@ -155,7 +166,7 @@ impl NonFungibleTokenEnumeration for Contract {
             .collect()
     }
 
-    fn nft_supply_for_owner(&self, account_id: AccountId) -> near_sdk::json_types::U128 {
+    fn nft_supply_for_owner(&self, account_id: AccountId) -> U128 {
         self.tokens.nft_supply_for_owner(account_id)
     }
 

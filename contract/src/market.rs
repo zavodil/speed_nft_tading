@@ -72,6 +72,7 @@ impl Contract {
     },
     signature - message signed with self.public_key
 
+    This function doesn't check if buyer has enough storage to keep the token. We expect server to make this check before to verify the transaction.
     */
 
 
@@ -127,7 +128,7 @@ impl Contract {
                     let seller_fee: Balance = self.seller_fee.multiply(price_increase);
 
                     // store old token
-                    if self.get_store_user_tokens(seller_id.clone()) && seller_storage_size > self.get_user_collection_items(&seller_id) {
+                    if self.get_store_user_tokens(seller_id.clone()) && seller_storage_size > self.internal_total_supply_by_user(&seller_id) {
                         log!("store_nft {}:{}", token_id.clone(), old_generation.clone());
                         self.store_nft(&token_id, old_generation, &seller_id)
                     }

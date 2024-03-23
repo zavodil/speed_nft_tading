@@ -24,10 +24,39 @@ Market
 
 `get_token(token_id)` - returns [token, [generation, price]]
 
-`get_token_for_sale(token_id)` - returns [token, next_price]
+`get_token_for_sale(token_id)` - returns [token, next_price, seller_collection_items, seller_is_store_tokens]
+seller_collection_items - u64, seller_is_store_tokens - bool
 
 `ft_transfer_call` - purchase NFT. Minting NFT, sending FT to the seller, paying referral commission, saving NFT in the seller's collection (if required and if possible).
 The token for sale has a token_id equals to "`<ipfs_hash>`". The token in the collection has a `token_id` equals to "`<generation>:<ipfs_hash>`".
+
+````
+Example:
+{
+"receiver_id": "n1.pepeproject.testnet",
+"amount": "100",
+"msg": "{\"Purchase\":{\"message\":\"{\\\"SimpleMint\\\":{\\\"token_id\\\":\\\"9.jpg\\\",\\\"account_id\\\":\\\"pepeproject.testnet\\\",\\\"seller_storage_size\\\":3,\\\"referral_id_1\\\":\\\"zavodil2.testnet\\\",\\\"referral_id_2\\\":null,\\\"timestamp\\\":1710796871868251000}}\",\"signature\":\"208c14a1b64479dc4a5496ede8331f0f58f73e91db268f27bed592b4c05b08cd1c006ac49eaf0e5caf1786b108a6907b62e11a9f20e5b11cbab92533f898030e\"}}"
+}
+````
+
+msg parameter:
+```
+Purchase: {
+    message:
+        SimpleMint: {
+           "token_id": "<ipfs_hash>",
+           "account_id": "buyer_name.near",
+           "seller_storage_size": 3,
+           "referral_id_1": "ref1.near",
+           "referral_id_2": "ref2.near",
+           timestamp: Timestamp
+        },
+    signature
+}
+```
+`signature` - message signed with self.public_key
+
+**This function doesn't check if buyer has enough storage to keep the token. We expect server to make this check before to verify the transaction.**
 
 Example: https://testnet.nearblocks.io/txns/2aHrHL2MDU9NdSbFBJ4QBmSVE5Tv7V92t9rpueorGsSR#execution
 

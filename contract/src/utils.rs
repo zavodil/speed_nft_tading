@@ -111,8 +111,8 @@ impl Contract {
         }
     }
 
-    // returns [token, next_price]
-    pub fn get_token_for_sale(&self, token_id: TokenId) -> Option<(Token, U128)> {
+    // returns [token, next_price, seller_collection_items, seller_total_items, seller_is_store_tokens]
+    pub fn get_token_for_sale(&self, token_id: TokenId) -> Option<(Token, U128, StorageSize, StorageSize, bool)> {
         // token from user collection
         if token_id.contains(':') {
             return None;
@@ -123,7 +123,11 @@ impl Contract {
 
             let price_increase = self.mint_price_increase_fee.multiply(old_price);
 
-            Some((token, U128::from(old_price + price_increase)))
+            let seller_collection_items =  self.get_user_collection_items(&token.owner_id);
+            let seller_total_items = self.internal_total_supply_by_user(&token.owner_id);
+            let seller_is_store_tokens = *self.is_store_user_tokens.get(&token.owner_id).unwrap_or(&false);
+
+            Some((token, U128::from(old_price + price_increase), seller_collection_items, seller_total_items, seller_is_store_tokens))
         } else {
             None
         }
