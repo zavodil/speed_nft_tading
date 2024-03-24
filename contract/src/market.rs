@@ -125,8 +125,6 @@ impl Contract {
                     let seller_id: AccountId = token.owner_id.clone();
                     assert_ne!(seller_id, receiver_id, "Current and next owner must differ");
 
-                    let seller_fee: Balance = self.seller_fee.multiply(price_increase);
-
                     // store old token
                     if self.get_store_user_tokens(seller_id.clone()) && seller_storage_size > self.internal_total_supply_by_user(&seller_id) {
                         log!("store_nft {}:{}", token_id.clone(), old_generation.clone());
@@ -137,40 +135,8 @@ impl Contract {
                     self.token_data.insert(token_id.clone(),
                                            TokenData { generation: old_generation + 1, price: new_price});
 
-                    // distribute affiliate reward
-                    let mut referral_1_fee: Balance = 0;
-                    let mut referral_2_fee: Balance = 0;
-                    if let Some(referral_1) = referral_id_1 {
-                        referral_1_fee = self.referral_1_fee.multiply(price_increase);
-                        self.internal_add_balance(&referral_1, referral_1_fee);
-                    }
-                    if let Some(referral_2) = referral_id_2 {
-                        referral_2_fee = self.referral_2_fee.multiply(price_increase);
-                        self.internal_add_balance(&referral_2, referral_2_fee);
-                    }
-
-                    // distribute system reward
-                    let mut system_fee = Some(price_increase);
-                    for val in &[seller_fee, referral_1_fee, referral_2_fee] {
-                        match system_fee {
-                            Some(r) => {
-                                system_fee = r.checked_sub(*val);
-                                if system_fee.is_none() {
-                                    break; // Exit loop if overflow occurs
-                                }
-                            }
-                            None => {
-                                break; // Exit loop if previous subtraction overflowed
-                            }
-                        }
-                    }
-                    if let Some(system_fee) = system_fee {
-                        self.internal_add_balance(&self.owner_id.clone(), system_fee);
-                    }
-
-                    if self.get_store_user_tokens(seller_id.clone()) {
-                        // store a copy of a token to seller's collection
-                    }
+                    // fees on nft price increase
+                    let seller_fee = self.manage_fees(false, &token_id, &receiver_id, price_increase, referral_id_1, referral_id_2);
 
                     self.tokens.internal_transfer(
                         &seller_id,
@@ -180,14 +146,20 @@ impl Contract {
                         None,
                     );
 
+                    let seller_payout = old_price + seller_fee;
+                    events::emit::add_seller_payout(&receiver_id, &token_id, seller_payout);
+
                     // ft transfer to seller here instead
-                    PromiseOrValue::Promise(self.internal_ft_transfer(&seller_id, old_price + seller_fee))
+                    PromiseOrValue::Promise(self.internal_ft_transfer(&seller_id, seller_payout))
 
                 } else {
                     // create new token
                     let min_price = self.min_mint_price;
 
                     assert_deposit(deposit, min_price);
+
+                    // fees on initial payment
+                    self.manage_fees(true, &token_id, &receiver_id, min_price, referral_id_1, referral_id_2);
 
                     self.token_data.insert(token_id.clone(), TokenData { generation: 0, price: min_price });
                     self.internal_mint_without_storage(token_id, receiver_id);
@@ -198,6 +170,47 @@ impl Contract {
         }
     }
 
+    // returns seller fee
+    pub(crate) fn manage_fees (&mut self, initial_sale: bool, token_id: &TokenId, account_id: &AccountId, price_increase: Balance, referral_id_1: Option<AccountId>, referral_id_2: Option<AccountId>) -> Balance {
+        let seller_fee: Balance = if !initial_sale { self.seller_fee.multiply(price_increase) } else { 0 };
+
+        // distribute affiliate reward
+        let mut referral_1_fee: Balance = 0;
+        let mut referral_2_fee: Balance = 0;
+        if let Some(referral_1) = referral_id_1 {
+            referral_1_fee = self.referral_1_fee.multiply(price_increase);
+            events::emit::add_referral_fee(&referral_1, account_id, token_id, referral_1_fee);
+            self.internal_add_balance(&referral_1, referral_1_fee);
+        }
+        if let Some(referral_2) = referral_id_2 {
+            referral_2_fee = self.referral_2_fee.multiply(price_increase);
+            events::emit::add_referral_fee(&referral_2, account_id, token_id, referral_2_fee);
+            self.internal_add_balance(&referral_2, referral_2_fee);
+        }
+
+        // distribute system reward
+        let mut system_fee = Some(price_increase);
+        for val in &[seller_fee, referral_1_fee, referral_2_fee] {
+            match system_fee {
+                Some(r) => {
+                    system_fee = r.checked_sub(*val);
+                    if system_fee.is_none() {
+                        break; // Exit loop if overflow occurs
+                    }
+                }
+                None => {
+                    break; // Exit loop if previous subtraction overflowed
+                }
+            }
+        }
+
+        if let Some(system_fee) = system_fee {
+            events::emit::add_system_fee(&self.owner_id, token_id, system_fee);
+            self.internal_add_balance(&self.owner_id.clone(), system_fee);
+        }
+
+        seller_fee
+    }
 }
 
 fn assert_deposit(deposit: Balance, price: Balance) {

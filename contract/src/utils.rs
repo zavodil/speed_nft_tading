@@ -32,7 +32,7 @@ impl Contract {
         self.min_mint_price = min_mint_price.0;
     }
 
-    pub fn get_min_mint_price(&mut self) -> U128{
+    pub fn get_min_mint_price(&self) -> U128{
         U128::from(self.min_mint_price)
     }
 

@@ -24,6 +24,10 @@ impl Contract{
             balance
         };
 
+        assert!(amount > 0, "Positive amount required");
+
+        events::emit::add_withdraw(&account_id, amount);
+
         self.internal_balances
             .insert(account_id.clone(), balance - amount);
 
