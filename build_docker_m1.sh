@@ -6,7 +6,7 @@ set -e
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 DOCKER_NAME="build_contract"
-FOLDER="near-contract"
+FOLDER="nftinder"
 
 if docker ps -a --format '{{.Names}}' | grep -Eq "^${DOCKER_NAME}\$"; then
     echo "Container exists"
@@ -25,6 +25,5 @@ fi
 docker start $DOCKER_NAME
 docker exec -it $DOCKER_NAME /bin/bash -c "rustup toolchain install stable; rustup default stable; rustup target add wasm32-unknown-unknown; cargo build --target wasm32-unknown-unknown --manifest-path ./../$FOLDER/Cargo.toml --release"
 
-mkdir -p res
-cp $DIR/target/wasm32-unknown-unknown/release/contract.wasm $DIR/res/release.wasm
+cp $DIR/target/wasm32-unknown-unknown/release/nftinder.wasm $DIR/out/release.wasm
 

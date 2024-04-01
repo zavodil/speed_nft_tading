@@ -61,6 +61,28 @@ impl Contract {
         self.referral_2_fee = referral_2_fee;
     }
 
+    pub fn set_max_storage_size(&mut self, max_storage_size: StorageSize) {
+        self.assert_owner();
+        self.max_storage_size = max_storage_size;
+    }
+
+    pub fn add_storage_package(&mut self, storage_size: StorageSize, price: U128) {
+        self.assert_owner();
+        let next_index = self.storage_packages.len() + 1;
+        self.storage_packages.insert(&next_index, &StoragePackage {
+            storage_size,
+            price: price.0
+        });
+    }
+
+    pub fn get_storage_packages(&self) -> Vec<(StoragePackageIndex, (StorageSize, U128))> {
+        self.storage_packages.into_iter().map(|data| (data.0, (data.1.storage_size, U128(data.1.price)))).collect::<Vec<_>>()
+    }
+
+    pub fn get_user_storage(&self, account_id: AccountId) -> StorageSize {
+        self.internal_get_user_storage(&account_id)
+    }
+
     pub fn get_balance(&self, account_id: AccountId) -> U128 {
         U128::from(self.internal_balances.get(&account_id).unwrap_or(&0u128).clone())
     }

@@ -17,6 +17,7 @@ mod ft;
 mod account;
 mod market;
 mod events;
+mod migration;
 
 pub const TIMESTAMP_MAX_INTERVAL: u64 = 5 * 60 * 1_000_000_000;
 
@@ -32,11 +33,14 @@ enum StorageKey {
     UserCollectionItems,
     UserCollectionItemsPerOwner { account_hash: Vec<u8> },
     TokenData,
-    LastUserAction
+    LastUserAction,
+    Storage,
+    StoragePackages,
 }
 
 pub type TokenGeneration = u32; // ~ 4.3M resales
 pub type StorageSize = u64;
+pub type StoragePackageIndex = u64;
 
 #[derive(BorshDeserialize, BorshSerialize, Clone)]
 #[borsh(crate = "near_sdk::borsh")]
@@ -51,6 +55,14 @@ struct TokenData {
 struct CollectionItem {
     token_id: TokenId,
     generation: TokenGeneration,
+}
+
+#[derive(BorshDeserialize, BorshSerialize, PartialEq, Clone, Deserialize, Serialize)]
+#[borsh(crate = "near_sdk::borsh")]
+#[serde(crate = "near_sdk::serde")]
+struct StoragePackage {
+    storage_size: StorageSize,
+    price: Balance,
 }
 
 #[near_bindgen]
@@ -88,6 +100,11 @@ pub struct Contract {
     seller_fee: FeeFraction,
     referral_1_fee: FeeFraction,
     referral_2_fee: FeeFraction,
+
+    // storage
+    storage: LookupMap<AccountId, StorageSize>,
+    max_storage_size: StorageSize,
+    storage_packages: UnorderedMap<StoragePackageIndex, StoragePackage>
 }
 
 #[derive(Deserialize)]
@@ -121,6 +138,7 @@ impl Contract {
         referral_2_fee: FeeFraction,
         contract_metadata: NFTContractMetadata,
         token_metadata: TokenMetadata,
+        max_storage_size: StorageSize
     ) -> Self {
         assert!(!env::state_exists(), "Already initialized");
 
@@ -158,6 +176,10 @@ impl Contract {
             seller_fee,
             referral_1_fee,
             referral_2_fee,
+
+            storage: LookupMap::new(StorageKey::Storage),
+            max_storage_size,
+            storage_packages: UnorderedMap::new(StorageKey::StoragePackages)
         }
     }
 

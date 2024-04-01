@@ -24,6 +24,9 @@ pub enum TokenReceiverMsg {
     Purchase {
         message: String,
         signature: String
+    },
+    Storage {
+        index: StoragePackageIndex
     }
 }
 
@@ -38,9 +41,17 @@ impl FungibleTokenReceiver for Contract {
         let token_receiver_msg: TokenReceiverMsg = serde_json::from_str(&msg).expect("Can't parse TokenReceiverMsg");
         match token_receiver_msg {
             TokenReceiverMsg::Purchase { message, signature } => {
+                events::emit::add_deposit(&sender_id, amount);
+
                 self.nft_mint(message, signature, sender_id, amount);
 
-                // events::emit::deposit(&sender_id, amount, &token_id);
+                PromiseOrValue::Value(U128(0))
+            },
+            TokenReceiverMsg::Storage { index } => {
+                events::emit::add_storage(&sender_id, amount);
+
+                self.buy_storage(sender_id, amount, index);
+
                 PromiseOrValue::Value(U128(0))
             }
         }
@@ -54,14 +65,12 @@ impl Contract {
         assert_eq!(env::promise_results_count(), 1, "Err: expected 1 promise result from withdraw");
         match env::promise_result(0) {
             PromiseResult::Successful(_) => {
-                // TODO
-                //events::emit::unstake_succeeded(&sender_id, amount.0, &token_id);
+                events::emit::add_withdraw_succeeded(&sender_id, amount.0);
             }
             PromiseResult::Failed => {
                 self.internal_add_balance(&sender_id, amount.0);
 
-                // TODO
-                // events::emit::unstake_failed(&sender_id, amount.0, &token_id);
+                events::emit::add_withdraw_failed(&sender_id, amount.0);
             }
         };
     }

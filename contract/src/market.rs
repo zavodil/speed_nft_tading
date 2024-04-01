@@ -65,9 +65,8 @@ impl Contract {
     {
        "token_id": "<ipfs_hash>",
        "account_id": "buyer_name.near",
-       "seller_storage_size": 3,
        "referral_id_1": "ref.near",
-       "referral_id_2": "ref.near",
+       "referral_id_2": null,
        timestamp: Timestamp
     },
     signature - message signed with self.public_key
@@ -89,6 +88,7 @@ impl Contract {
 
         match parsed_message {
             MintNftMsg::SimpleMint {
+                // TODO remove input seller_storage_size
                 token_id, account_id, referral_id_1, referral_id_2, timestamp, seller_storage_size
             } => {
                 assert_eq!(receiver_id, account_id, "Mint for yourself only");
@@ -104,6 +104,10 @@ impl Contract {
                         "Timestamp is smaller then last user's action"
                     );
                 }
+
+                let buyer_storage_size = self.internal_get_user_storage(&account_id);
+                let buyer_storage_used = self.internal_total_supply_by_user(&account_id);
+                assert!(buyer_storage_size > buyer_storage_used, "Insufficient Storage");
 
                 // save buyer's action
                 self.last_user_action.insert(account_id, env::block_timestamp());
@@ -124,6 +128,8 @@ impl Contract {
                     // distribute seller reward
                     let seller_id: AccountId = token.owner_id.clone();
                     assert_ne!(seller_id, receiver_id, "Current and next owner must differ");
+
+                    let seller_storage_size = self.internal_get_user_storage(&seller_id);
 
                     // store old token
                     if self.get_store_user_tokens(seller_id.clone()) && seller_storage_size > self.internal_total_supply_by_user(&seller_id) {
@@ -210,6 +216,21 @@ impl Contract {
         }
 
         seller_fee
+    }
+
+    pub(crate) fn internal_get_user_storage(&self, account_id: &AccountId) -> StorageSize {
+        self.storage.get(account_id).unwrap_or(&1).clone()
+    }
+
+    pub(crate) fn buy_storage(&mut self, receiver_id: AccountId, deposit: Balance, index: StoragePackageIndex) {
+        let package = self.storage_packages.get(&index).expect("Missing Storage Package");
+        assert!(deposit >= package.price , "Illegal Deposit");
+
+        let old_storage = self.internal_get_user_storage(&receiver_id);
+        let new_storage = old_storage + package.storage_size;
+        assert!(new_storage <= self.max_storage_size, "Illegal Storage To Buy");
+
+        self.storage.insert(receiver_id, new_storage);
     }
 }
 

@@ -5,8 +5,6 @@ impl Contract {
         if value > 0 {
             let prev_balance: Balance = self.internal_balances.get(account_id).unwrap_or(&0u128).clone();
             self.internal_balances.insert(account_id.clone(), prev_balance + value);
-
-            // TODO TODO emit event new reward
         }
     }
 }
@@ -25,8 +23,6 @@ impl Contract{
         };
 
         assert!(amount > 0, "Positive amount required");
-
-        events::emit::add_withdraw(&account_id, amount);
 
         self.internal_balances
             .insert(account_id.clone(), balance - amount);

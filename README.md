@@ -82,6 +82,20 @@ User Collection
 
 `remove_user_collection_item(generation, token_id)` - remove NFT from collection
 
+Prepaid Storage
+====
+
+`get_storage_packages` -> Vec[index, StoragePackage], StoragePackage = {storage_size, price}
+
+`get_user_storage(account_id)` -> storage_size
+
+To buy storage, execute `ft_transfet_call`, example:
+
+```
+near call 438e48ed4ce6beecf503d43b9dbd3c30d516e7fd.factory.bridge.near ft_transfer_call '{"receiver_id": "'$CONTRACT_ID'", "amount": "1000000000000000000", "msg": "{\"Storage\":{\"index\":1}}"}' --accountId $OWNER_ID --depositYocto 1 --gas 50000000000000
+```
+Don't forget to set a proper `index` and attach corresponding amount of FT
+
 NFT Interface
 ===
 
