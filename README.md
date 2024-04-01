@@ -85,7 +85,7 @@ User Collection
 Prepaid Storage
 ====
 
-`get_storage_packages` -> Vec[index, StoragePackage], StoragePackage = {storage_size, price}
+`get_storage_packages` -> Vec[index, storage_size, price]
 
 `get_user_storage(account_id)` -> storage_size
 
