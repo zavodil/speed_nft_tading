@@ -1,4 +1,5 @@
 use crate::*;
+use crate::market::FREE_STORAGE_SIZE;
 
 #[near_bindgen]
 impl Contract {
@@ -75,12 +76,21 @@ impl Contract {
         });
     }
 
+    pub fn remove_storage_package(&mut self, index: StoragePackageIndex) {
+        self.assert_owner();
+        self.storage_packages.remove(&index);
+    }
+
     pub fn get_storage_packages(&self) -> Vec<(StoragePackageIndex, (StorageSize, U128))> {
         self.storage_packages.into_iter().map(|data| (data.0, (data.1.storage_size, U128(data.1.price)))).collect::<Vec<_>>()
     }
 
     pub fn get_user_storage(&self, account_id: AccountId) -> StorageSize {
         self.internal_get_user_storage(&account_id)
+    }
+
+    pub fn get_free_storage_size(&self) -> StorageSize {
+        FREE_STORAGE_SIZE
     }
 
     pub fn get_balance(&self, account_id: AccountId) -> U128 {

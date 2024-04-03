@@ -3,6 +3,8 @@ use crate::ft::{GAS_FOR_AFTER_FT_TRANSFER, GAS_FOR_FT_TRANSFER};
 
 const GAS_FOR_RESALE: Gas = Gas::from_tgas(GAS_FOR_AFTER_FT_TRANSFER.as_tgas() + GAS_FOR_FT_TRANSFER.as_tgas() + 15u64);
 
+pub const FREE_STORAGE_SIZE: StorageSize = 3;
+
 impl Contract {
     pub(crate) fn get_new_token_data(&self) -> TokenData {
         TokenData {
@@ -219,7 +221,7 @@ impl Contract {
     }
 
     pub(crate) fn internal_get_user_storage(&self, account_id: &AccountId) -> StorageSize {
-        self.storage.get(account_id).unwrap_or(&1).clone()
+        self.storage.get(account_id).unwrap_or(&FREE_STORAGE_SIZE).clone()
     }
 
     pub(crate) fn buy_storage(&mut self, receiver_id: AccountId, deposit: Balance, index: StoragePackageIndex) {
