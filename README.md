@@ -89,7 +89,9 @@ Prepaid Storage
 
 `get_user_storage(account_id)` -> storage_size
 
-`get_free_storage_size` -> storage_size
+`get_free_storage_size` -> storage_size (3)
+
+`get_max_storage_size` -> storage_size (25)
 
 To buy storage, execute `ft_transfer_call`, example:
 

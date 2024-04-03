@@ -67,6 +67,10 @@ impl Contract {
         self.max_storage_size = max_storage_size;
     }
 
+    pub fn get_max_storage_size(&self) -> StorageSize {
+        self.max_storage_size
+    }
+
     pub fn add_storage_package(&mut self, storage_size: StorageSize, price: U128) {
         self.assert_owner();
         let next_index = self.storage_packages.len() + 1;
