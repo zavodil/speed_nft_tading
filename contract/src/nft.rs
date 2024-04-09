@@ -5,7 +5,12 @@ use near_sdk::{require, IntoStorageKey};
 impl Contract {
     pub fn get_token_metadata(&self, token_id: &TokenId) -> TokenMetadata {
         let mut token_metadata = self.token_metadata.get().unwrap();
-        token_metadata.media = Some(format!("ipfs://{}", token_id));
+        let data = parse_token_id(token_id.clone());
+        token_metadata.media = Some(format!("ipfs://{}", data.1));
+
+        if data.0 > 0 {
+            token_metadata.extra = Some(format!("Generation {}", data.0));
+        }
 
         token_metadata
     }

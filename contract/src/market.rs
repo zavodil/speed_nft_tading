@@ -234,6 +234,41 @@ impl Contract {
 
         self.storage.insert(receiver_id, new_storage);
     }
+
+    pub(crate) fn internal_remove_user_collection_item(&mut self, account_id: AccountId, generation: TokenGeneration, token_id: TokenId, verify_data: bool) {
+        let mut user_collection = self.user_collection_items.get(&account_id).expect("Not found");
+
+        let full_token_id = generate_token_id(&generation, &token_id);
+
+        let item_to_remove = CollectionItem {token_id: token_id.clone(), generation};
+        if user_collection.contains(&item_to_remove) {
+            log!("Item removed: {}", full_token_id);
+
+            user_collection.remove(&item_to_remove);
+            self.user_collection_items.insert(&account_id, &user_collection);
+        }
+        else {
+            if verify_data {
+                panic!("Not found");
+            }
+        }
+
+        // remove NFT
+        if verify_data {
+            assert!(self.tokens.owner_by_id.contains_key(&full_token_id), "Token not found (owner_by_id)");
+        }
+        self.tokens.owner_by_id.remove(&full_token_id);
+
+        if let Some(tokens_per_owner) = &mut self.tokens.tokens_per_owner {
+            let mut token_ids = tokens_per_owner.get(&account_id).expect("Not found");
+            if verify_data {
+                assert!(tokens_per_owner.contains_key(&account_id), "Account not found (tokens_per_owner)");
+                assert!(tokens_per_owner.contains_key(&account_id), "Token not found (tokens_per_owner)");
+            }
+            token_ids.remove(&full_token_id);
+            tokens_per_owner.insert(&account_id, &token_ids);
+        }
+    }
 }
 
 fn assert_deposit(deposit: Balance, price: Balance) {

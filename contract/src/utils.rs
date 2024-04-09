@@ -67,6 +67,11 @@ impl Contract {
         self.max_storage_size = max_storage_size;
     }
 
+    pub fn remove_user_collection_item_for_user(&mut self, account_id: AccountId, generation: TokenGeneration, token_id: TokenId) {
+        self.assert_owner();
+        self.internal_remove_user_collection_item(account_id, generation, token_id, false);
+    }
+
     pub fn get_max_storage_size(&self) -> StorageSize {
         self.max_storage_size
     }
@@ -103,29 +108,7 @@ impl Contract {
 
     pub fn remove_user_collection_item(&mut self, generation: TokenGeneration, token_id: TokenId) {
         let account_id = env::predecessor_account_id();
-
-        let mut user_collection = self.user_collection_items.get(&account_id).expect("Not found");
-
-        let item_to_remove = CollectionItem {token_id: token_id.clone(), generation};
-        if user_collection.contains(&item_to_remove) {
-            log!("Item removed: {}:{}", generation, token_id.clone());
-
-            user_collection.remove(&item_to_remove);
-            self.user_collection_items.insert(&account_id, &user_collection);
-        }
-        else {
-            panic!("Not found");
-        }
-
-        // remove NFT
-        let full_token_id = generate_token_id(&generation, &token_id);
-        self.tokens.owner_by_id.remove(&full_token_id);
-
-        if let Some(tokens_per_owner) = &mut self.tokens.tokens_per_owner {
-            let mut token_ids = tokens_per_owner.get(&account_id).expect("Not found");
-            token_ids.remove(&token_id);
-            tokens_per_owner.insert(&account_id, &token_ids);
-        }
+        self.internal_remove_user_collection_item(account_id, generation, token_id, true);
     }
 
     // returns [token, [generation, price]]

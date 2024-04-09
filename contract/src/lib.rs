@@ -52,7 +52,7 @@ struct TokenData {
 #[derive(BorshDeserialize, BorshSerialize, PartialEq, Clone, Serialize)]
 #[borsh(crate = "near_sdk::borsh")]
 #[serde(crate = "near_sdk::serde")]
-struct CollectionItem {
+pub struct CollectionItem {
     token_id: TokenId,
     generation: TokenGeneration,
 }
