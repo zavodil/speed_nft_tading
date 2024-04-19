@@ -79,10 +79,10 @@ pub struct Contract {
     contract_metadata: LazyOption<NFTContractMetadata>,
     token_metadata: LazyOption<TokenMetadata>,
 
-    // referral rewards
+    // referral rewards + refunds for fallen withdrawals
     internal_balances: LookupMap<AccountId, Balance>,
 
-    // shall we store user tokens
+    // shall we store user tokens in user_collection
     is_store_user_tokens: LookupMap<AccountId, bool>,
 
     // generation, price, last_sale
@@ -92,7 +92,6 @@ pub struct Contract {
     last_user_action: LookupMap<AccountId, Timestamp>,
 
     // tokens in user collections
-    //user_collection_items_1: LookupMap<AccountId, Vec<CollectionItem>>,
     user_collection_items: UnorderedMap<AccountId, UnorderedSet<CollectionItem>>,
 
     // fees
@@ -114,7 +113,6 @@ pub enum MintNftMsg {
     SimpleMint {
         token_id: TokenId,
         account_id: AccountId,
-        seller_storage_size: StorageSize,
         referral_id_1: Option<AccountId>,
         referral_id_2: Option<AccountId>,
         timestamp: Timestamp

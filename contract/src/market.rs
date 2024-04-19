@@ -90,8 +90,7 @@ impl Contract {
 
         match parsed_message {
             MintNftMsg::SimpleMint {
-                // TODO remove input seller_storage_size
-                token_id, account_id, referral_id_1, referral_id_2, timestamp, seller_storage_size
+                token_id, account_id, referral_id_1, referral_id_2, timestamp
             } => {
                 assert_eq!(receiver_id, account_id, "Mint for yourself only");
 
