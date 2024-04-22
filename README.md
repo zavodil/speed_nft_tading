@@ -35,7 +35,7 @@ Example:
 {
 "receiver_id": "n1.pepeproject.testnet",
 "amount": "100",
-"msg": "{\"Purchase\":{\"message\":\"{\\\"SimpleMint\\\":{\\\"token_id\\\":\\\"9.jpg\\\",\\\"account_id\\\":\\\"pepeproject.testnet\\\",\\\"seller_storage_size\\\":3,\\\"referral_id_1\\\":\\\"zavodil2.testnet\\\",\\\"referral_id_2\\\":null,\\\"timestamp\\\":1710796871868251000}}\",\"signature\":\"208c14a1b64479dc4a5496ede8331f0f58f73e91db268f27bed592b4c05b08cd1c006ac49eaf0e5caf1786b108a6907b62e11a9f20e5b11cbab92533f898030e\"}}"
+"msg": "{\"Purchase\":{\"message\":\"{\\\"SimpleMint\\\":{\\\"token_id\\\":\\\"9.jpg\\\",\\\"account_id\\\":\\\"pepeproject.testnet\\\",\\\"referral_id_1\\\":\\\"zavodil2.testnet\\\",\\\"referral_id_2\\\":null,\\\"timestamp\\\":1710796871868251000}}\",\"signature\":\"208c14a1b64479dc4a5496ede8331f0f58f73e91db268f27bed592b4c05b08cd1c006ac49eaf0e5caf1786b108a6907b62e11a9f20e5b11cbab92533f898030e\"}}"
 }
 ````
 
@@ -45,11 +45,10 @@ Purchase: {
     message:
         SimpleMint: {
            "token_id": "<ipfs_hash>",
-           "account_id": "buyer_name.near",
-           "seller_storage_size": 3,
+           "account_id": "buyer_name.near",           
            "referral_id_1": "ref1.near",
            "referral_id_2": "ref2.near",
-           timestamp: Timestamp
+           "timestamp": 123123123,
         },
     signature
 }

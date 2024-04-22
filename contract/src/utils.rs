@@ -76,6 +76,10 @@ impl Contract {
         self.max_storage_size
     }
 
+    pub fn get_fees(&self) -> (FeeFraction, FeeFraction, FeeFraction, FeeFraction) {
+        (self.mint_price_increase_fee.clone(), self.seller_fee.clone(), self.referral_1_fee.clone(), self.referral_2_fee.clone())
+    }
+
     pub fn add_storage_package(&mut self, storage_size: StorageSize, price: U128) {
         self.assert_owner();
         let next_index = self.storage_packages.len() + 1;
@@ -159,7 +163,7 @@ impl Contract {
     }
 }
 
-#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize)]
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone)]
 #[borsh(crate = "near_sdk::borsh")]
 #[serde(crate = "near_sdk::serde")]
 pub struct FeeFraction {
