@@ -79,10 +79,14 @@ impl Contract {
 
     pub(crate) fn nft_mint(&mut self, message: String, signature: String, receiver_id: AccountId, deposit: Balance) -> PromiseOrValue<bool> {
         let mut pk = [0u8; 32];
-        let _pk_bytes = hex::decode_to_slice(self.public_key.clone(), &mut pk as &mut [u8]);
+        let v = hex::decode(&self.public_key).expect("Failed to decode public key");
+        assert_eq!(pk.len(), v.len(), "Invalid key length");
+        pk.copy_from_slice(&v);
 
         let mut sig = [0u8; 64];
-        let _signature = hex::decode_to_slice(signature, &mut sig as &mut [u8]);
+        let v = hex::decode(&signature).expect("Failed to decode signature");
+        assert_eq!(sig.len(), v.len(), "Invalid signature length");
+        sig.copy_from_slice(&v);
 
         assert!(verification(&pk, &message, &sig), "Signature check failed");
 
@@ -262,7 +266,6 @@ impl Contract {
             let mut token_ids = tokens_per_owner.get(&account_id).expect("Not found");
             if verify_data {
                 assert!(tokens_per_owner.contains_key(&account_id), "Account not found (tokens_per_owner)");
-                assert!(tokens_per_owner.contains_key(&account_id), "Token not found (tokens_per_owner)");
             }
             token_ids.remove(&full_token_id);
             tokens_per_owner.insert(&account_id, &token_ids);

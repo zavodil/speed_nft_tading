@@ -1,4 +1,4 @@
-use crate::utils::FeeFraction;
+use crate::utils::{assert_fees_overflow, FeeFraction};
 use near_contract_standards::fungible_token::Balance;
 use near_contract_standards::non_fungible_token::core::NonFungibleTokenCore;
 use near_contract_standards::non_fungible_token::metadata::{
@@ -139,6 +139,7 @@ impl Contract {
         max_storage_size: StorageSize
     ) -> Self {
         assert!(!env::state_exists(), "Already initialized");
+        assert_fees_overflow(vec![&seller_fee, &referral_1_fee, &referral_2_fee]);
 
         contract_metadata.assert_valid();
         token_metadata.assert_valid();

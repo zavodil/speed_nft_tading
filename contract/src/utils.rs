@@ -53,11 +53,13 @@ impl Contract {
 
     pub fn set_seller_fee(&mut self, seller_fee: FeeFraction) {
         self.assert_owner();
+        assert_fees_overflow(vec![&seller_fee, &self.referral_1_fee, &self.referral_2_fee]);
         self.seller_fee = seller_fee;
     }
 
     pub fn set_referral_fee(&mut self, referral_1_fee: FeeFraction, referral_2_fee: FeeFraction) {
         self.assert_owner();
+        assert_fees_overflow(vec![&self.seller_fee, &referral_1_fee, &referral_2_fee]);
         self.referral_1_fee = referral_1_fee;
         self.referral_2_fee = referral_2_fee;
     }
@@ -89,9 +91,11 @@ impl Contract {
         });
     }
 
+    #[allow(unused_variables)]
     pub fn remove_storage_package(&mut self, index: StoragePackageIndex) {
-        self.assert_owner();
-        self.storage_packages.remove(&index);
+        panic!("Protected");
+        // self.assert_owner();
+        // self.storage_packages.remove(&index);
     }
 
     pub fn get_storage_packages(&self) -> Vec<(StoragePackageIndex, (StorageSize, U128))> {
@@ -183,6 +187,16 @@ impl FeeFraction {
     pub fn multiply(&self, value: Balance) -> Balance {
         (U256::from(self.numerator) * U256::from(value) / U256::from(self.denominator)).as_u128()
     }
+}
+
+// verify if sum of all fee fractions is not exceeded 100%
+pub fn assert_fees_overflow(items: Vec<&FeeFraction>) {
+    let base_amount: Balance = 1000000;
+    let mut sum_all_fees: Balance = 0;
+    for fee in items {
+        sum_all_fees += fee.multiply(base_amount)
+    }
+    assert!(sum_all_fees <= base_amount, "Fees overflow");
 }
 
 use uint::construct_uint;
