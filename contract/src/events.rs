@@ -6,6 +6,13 @@ pub mod emit {
 
     #[derive(Serialize)]
     #[serde(crate = "near_sdk::serde")]
+    struct AccountTokenData<'a> {
+        pub account_id: &'a AccountId,
+        pub token_id: &'a TokenId,
+    }
+
+    #[derive(Serialize)]
+    #[serde(crate = "near_sdk::serde")]
     struct AccountAmountData<'a> {
         pub account_id: &'a AccountId,
         #[serde(with = "u128_dec_format")]
@@ -69,6 +76,10 @@ pub mod emit {
 
     pub fn add_withdraw_failed(account_id: &AccountId, amount: Balance) {
         log_event("withdraw_failed", AccountAmountData { account_id, amount });
+    }
+
+    pub fn add_burn_nft(account_id: &AccountId, token_id: &TokenId) {
+        log_event("nft_burn", AccountTokenData { account_id, token_id });
     }
 }
 
