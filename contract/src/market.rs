@@ -245,7 +245,7 @@ impl Contract {
 
         let item_to_remove = CollectionItem {token_id: token_id.clone(), generation};
         if user_collection.contains(&item_to_remove) {
-            log!("Item removed: {}", full_token_id);
+            events::emit::add_burn_nft(&account_id, &full_token_id);
 
             user_collection.remove(&item_to_remove);
             self.user_collection_items.insert(&account_id, &user_collection);
