@@ -182,6 +182,10 @@ impl Contract {
         }
     }
 
+    pub fn set_contract_metadate(&mut self, contract_metadata: NFTContractMetadata) {
+        self.assert_owner();
+        self.contract_metadata.set(&contract_metadata);
+    }
 
 }
 
