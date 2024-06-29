@@ -178,6 +178,50 @@ impl Contract {
                     PromiseOrValue::Value(true)
                 }
             }
+            MintNftMsg::UserMintRequest {
+                token_id, account_id
+            } => {
+                assert_eq!(self.tokens.nft_token(token_id.clone()), None, "Token already exists");
+                assert_eq!(receiver_id, account_id, "Mint for yourself only");
+
+                assert_deposit(deposit, self.user_mint_price);
+
+                self.mint_user_token(token_id, receiver_id);
+
+                PromiseOrValue::Value(true)
+            },
+            MintNftMsg::UserMintResponses {
+                responses
+
+            } => {
+                assert_eq!(deposit, 1, "FT deposit required");
+
+                for response in responses {
+                    let user_token_request_id = response.user_token_request_id;
+                    let token_id = response.token_id;
+                    let mint_price = response.mint_price;
+                    let token_status = response.token_status;
+
+                    assert_eq!(self.tokens.nft_token(token_id.clone()), None, "Token already exists");
+
+                    match token_status {
+                        TokenStatus::APPROVED => {
+                            self.token_data.insert(token_id.clone(), TokenData { generation: 0, price: mint_price.0 });
+                            self.internal_mint_without_storage(token_id.clone(), receiver_id.clone());
+                        }
+                        _ => {}
+                    }
+
+                    let mut token = self.user_token_requests.get(&user_token_request_id).expect("Unknown token_id");
+                    if token.status != token_status {
+                        events::emit::token_status_changed(&token.account_id, &token_id, &token_status);
+                    }
+                    token.status = token_status;
+                    self.user_token_requests.insert(&user_token_request_id, &token);
+                }
+
+                PromiseOrValue::Value(true)
+            },
         }
     }
 
@@ -227,16 +271,7 @@ impl Contract {
         self.storage.get(account_id).unwrap_or(&FREE_STORAGE_SIZE).clone()
     }
 
-    pub(crate) fn buy_storage(&mut self, receiver_id: AccountId, deposit: Balance, index: StoragePackageIndex) {
-        let package = self.storage_packages.get(&index).expect("Missing Storage Package");
-        assert!(deposit >= package.price , "Illegal Deposit");
 
-        let old_storage = self.internal_get_user_storage(&receiver_id);
-        let new_storage = old_storage + package.storage_size;
-        assert!(new_storage <= self.max_storage_size, "Illegal Storage To Buy");
-
-        self.storage.insert(receiver_id, new_storage);
-    }
 
     pub(crate) fn internal_remove_user_collection_item(&mut self, account_id: AccountId, generation: TokenGeneration, token_id: TokenId, verify_data: bool) {
         let mut user_collection = self.user_collection_items.get(&account_id).expect("Not found");
@@ -283,4 +318,49 @@ fn verification(pk_string: &[u8; 32], message: &str, sig_string: &[u8; 64]) -> b
 
 fn remaining_gas() -> Gas {
     Gas::from_gas(env::prepaid_gas().as_gas() - env::used_gas().as_gas())
+}
+
+#[cfg(test)]
+mod tests {
+    use near_contract_standards::non_fungible_token::metadata::{NFTContractMetadata, TokenMetadata};
+    use near_contract_standards::non_fungible_token::TokenId;
+    use near_sdk::AccountId;
+    use near_sdk::json_types::U128;
+    use crate::Contract;
+    use crate::utils::FeeFraction;
+
+    #[test]
+    fn test_fees() {
+        let owner: AccountId = "owner.near".parse().unwrap();
+        let user: AccountId = "user.near".parse().unwrap();
+        let ft: AccountId = "ft.near".parse().unwrap();
+        let ref1: Option<AccountId> = Some("ref1.near".parse().unwrap());
+        let ref2: Option<AccountId> = Some("ref2.near".parse().unwrap());
+        let token: TokenId = "token-123".parse().unwrap();
+        let mint_price: U128 = U128::from(1000);
+        let pk:String = "KEY".to_string();
+        let contract_metadata: NFTContractMetadata = NFTContractMetadata {
+            spec: "nft-1.0.0".to_string(),
+            name: "N".to_string(),
+            symbol: "S".to_string(),
+            icon: None,
+            base_uri: None,
+            reference: None,
+            reference_hash: None,
+        };
+        let token_metadata: TokenMetadata = TokenMetadata::default();
+
+        let mint_price_increase_fee = FeeFraction {numerator: 25, denominator: 100};
+        let seller_fee = FeeFraction {numerator: 15, denominator: 100};
+        let referral_1_fee = FeeFraction {numerator: 1, denominator: 25};
+        let referral_2_fee = FeeFraction {numerator: 1, denominator: 25};
+        let price_increase: u128 = 100000;
+
+        let mut contract = Contract::new(owner, ft, pk, mint_price, mint_price_increase_fee, seller_fee, referral_1_fee, referral_2_fee, contract_metadata, token_metadata, 3);
+
+        //let (seller_fee, referral_1_fee, referral_2_fee, system_fee) = contract.manage_fees(false, &token, &user, price_increase, ref1, ref2);
+        let seller_fee = contract.manage_fees(false, &token, &user, price_increase, ref1, ref2);
+
+        assert_eq!(seller_fee, 375)
+    }
 }

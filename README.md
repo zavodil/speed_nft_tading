@@ -27,7 +27,10 @@ Market
 `get_token_for_sale(token_id)` - returns [token, next_price, seller_collection_items, seller_is_store_tokens]
 seller_collection_items - u64, seller_is_store_tokens - bool
 
-`ft_transfer_call` - purchase NFT. Minting NFT, sending FT to the seller, paying referral commission, saving NFT in the seller's collection (if required and if possible).
+`ft_transfer_call` - NFT actions 
+
+### NFT Purchase 
+Minting NFT, sending FT to the seller, paying referral commission, saving NFT in the seller's collection (if required and if possible).
 The token for sale has a token_id equals to "`<ipfs_hash>`". The token in the collection has a `token_id` equals to "`<generation>:<ipfs_hash>`".
 
 ````
@@ -58,6 +61,42 @@ Purchase: {
 **This function doesn't check if buyer has enough storage to keep the token. We expect server to make this check before to verify the transaction.**
 
 Example: https://testnet.nearblocks.io/txns/2aHrHL2MDU9NdSbFBJ4QBmSVE5Tv7V92t9rpueorGsSR#execution
+
+### Request to add NFT
+
+msg parameter:
+```
+Purchase: {
+    message:
+        UserMintRequest {
+           "token_id": "<ipfs_hash>",
+           "account_id": "nft_owner_name.near",           
+        },
+    signature
+}
+```
+Requires self.user_mint_price FT to be attached
+
+### Admin response to add NFT
+
+msg parameter:
+```
+Purchase: {
+    message:
+        UserMintResponses {
+           "responses": [
+                {
+                    "user_token_request_id": u64,
+                    "token_id: "<ipfs_hash>",,
+                    "mint_price": U128
+                    "token_status": "APPROVED"/"REEJCTED",
+                }
+           ]           
+        },
+    signature
+}
+```
+Requires 1 FT to be attached (just 1, not 10^decimals)
 
 User Balance
 ======
@@ -99,6 +138,8 @@ near call 438e48ed4ce6beecf503d43b9dbd3c30d516e7fd.factory.bridge.near ft_transf
 ```
 Don't forget to set a proper `index` and attach corresponding amount of FT
 
+`transfer_storage (receiver_contract_id: AccountId)` -> delete storage from current contract and add it on receiver_contract_id 
+
 NFT Interface
 ===
 
@@ -111,3 +152,18 @@ NFT Interface
 `nft_supply_for_owner(account_id)`
 
 `nft_tokens_for_owner(account_id, from_index, limit)`
+
+User tokens
+===
+
+`get_user_mint_requests(from_index, limit)` - read user requests. Returns 
+[[user_token_request_id, UserToken], [user_token_request_id, UserToken], ..] 
+Where `UserToken` is
+```
+{
+    pub token_id: <ipfs_hash>,
+    pub account_id: AccountId,
+    pub status: PENDING/APPROVED"/"REEJCTED,
+    pub created_at: Timestamp
+}
+```

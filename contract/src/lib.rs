@@ -10,6 +10,7 @@ use near_contract_standards::non_fungible_token::{
 use near_sdk::{borsh::{BorshDeserialize, BorshSerialize}, collections::{LazyOption, UnorderedMap, UnorderedSet}, NearToken, env, json_types::U128, Promise, near_bindgen, serde::{Deserialize, Serialize}, AccountId, BorshStorageKey, PanicOnDefault, PromiseOrValue, Timestamp, Gas, ext_contract, log};
 use near_sdk::store::{LookupMap};
 use nft::{nft_without_metadata, generate_token_id};
+use crate::user_token::{TokenStatus, UserToken};
 
 mod nft;
 mod utils;
@@ -18,6 +19,8 @@ mod account;
 mod market;
 mod events;
 mod migration;
+mod user_token;
+mod storage;
 
 pub const TIMESTAMP_MAX_INTERVAL: u64 = 5 * 60 * 1_000_000_000;
 
@@ -36,6 +39,7 @@ enum StorageKey {
     LastUserAction,
     Storage,
     StoragePackages,
+    UserTokens,
 }
 
 pub type TokenGeneration = u32; // ~ 4.3M resales
@@ -103,11 +107,19 @@ pub struct Contract {
     // storage
     storage: LookupMap<AccountId, StorageSize>,
     max_storage_size: StorageSize,
-    storage_packages: UnorderedMap<StoragePackageIndex, StoragePackage>
+    storage_packages: UnorderedMap<StoragePackageIndex, StoragePackage>,
+
+    // user_tokens
+    user_mint_price: Balance,
+    user_token_requests: UnorderedMap<u64, UserToken>,
+    last_user_token_request_id: u64,
+
+    // trusted contract with storage available to transfer
+    storage_contract_id: Option<AccountId>
 }
 
 #[derive(Deserialize)]
-#[cfg_attr(not(target_arch = "wasm32"), derive(Debug, Serialize))]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Serialize))]
 #[serde(crate = "near_sdk::serde")]
 pub enum MintNftMsg {
     SimpleMint {
@@ -116,9 +128,25 @@ pub enum MintNftMsg {
         referral_id_1: Option<AccountId>,
         referral_id_2: Option<AccountId>,
         timestamp: Timestamp
+    },
+    UserMintRequest {
+        token_id: String,
+        account_id: AccountId,
+    },
+    UserMintResponses {
+        responses: Vec<UserMintResponse>
     }
 }
 
+#[derive(Deserialize)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Serialize))]
+#[serde(crate = "near_sdk::serde")]
+pub struct UserMintResponse {
+    user_token_request_id: u64,
+    token_id: String,
+    mint_price: U128,
+    token_status: TokenStatus,
+}
 #[near_bindgen]
 impl Contract {
     #[init]
@@ -136,7 +164,8 @@ impl Contract {
         referral_2_fee: FeeFraction,
         contract_metadata: NFTContractMetadata,
         token_metadata: TokenMetadata,
-        max_storage_size: StorageSize
+        max_storage_size: StorageSize,
+        user_mint_price: U128
     ) -> Self {
         assert!(!env::state_exists(), "Already initialized");
         assert_fees_overflow(vec![&seller_fee, &referral_1_fee, &referral_2_fee]);
@@ -178,11 +207,15 @@ impl Contract {
 
             storage: LookupMap::new(StorageKey::Storage),
             max_storage_size,
-            storage_packages: UnorderedMap::new(StorageKey::StoragePackages)
+            storage_packages: UnorderedMap::new(StorageKey::StoragePackages),
+            user_token_requests: UnorderedMap::new(StorageKey::UserTokens),
+            last_user_token_request_id: 0,
+            user_mint_price: user_mint_price.0,
+            storage_contract_id: None
         }
     }
 
-    pub fn set_contract_metadate(&mut self, contract_metadata: NFTContractMetadata) {
+    pub fn set_contract_metadata(&mut self, contract_metadata: NFTContractMetadata) {
         self.assert_owner();
         self.contract_metadata.set(&contract_metadata);
     }

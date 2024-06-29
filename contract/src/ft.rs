@@ -10,11 +10,17 @@ pub const GAS_FOR_AFTER_FT_TRANSFER: Gas = Gas::from_tgas(10);
 #[ext_contract(ext_ft_contract)]
 trait ExtFtContract {
     fn ft_transfer_call(&mut self, receiver_id: AccountId, amount: U128, memo: Option<String>, msg: String) -> PromiseOrValue<U128>;
- }
+}
+
+#[ext_contract(ext_market_contract)]
+trait ExtMarketContract {
+    fn on_transfer_storage(&mut self, account_id: AccountId, user_storage: StorageSize);
+}
 
 #[ext_contract(ext_self)]
 pub trait ExtContract {
     fn callback_after_withdraw(&mut self, sender_id: AccountId, amount: U128);
+    fn callback_after_transfer_storage(&mut self, account_id: AccountId, user_storage: StorageSize);
 }
 
 #[derive(Deserialize)]

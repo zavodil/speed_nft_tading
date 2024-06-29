@@ -39,6 +39,21 @@ pub mod emit {
         pub amount: Balance,
     }
 
+    #[derive(Serialize)]
+    #[serde(crate = "near_sdk::serde")]
+    struct UserTokenRequestData<'a> {
+        pub account_id: &'a AccountId,
+        pub token_id: &'a TokenId,
+        pub status: &'a TokenStatus,
+    }
+
+    #[derive(Serialize)]
+    #[serde(crate = "near_sdk::serde")]
+    struct AccountStorageData<'a> {
+        pub account_id: &'a AccountId,
+        pub storage: StorageSize,
+    }
+
     fn log_event<T: Serialize>(event: &str, data: T) {
         let event = json!({
             "standard": "nftinder",
@@ -48,6 +63,10 @@ pub mod emit {
         });
 
         log!("EVENT_JSON:{}", event.to_string());
+    }
+
+    pub fn token_status_changed(account_id: &AccountId, token_id: &TokenId, status: &TokenStatus) {
+        log_event("token_status_changed", UserTokenRequestData { account_id, token_id, status });
     }
 
     pub fn add_referral_fee(referrer_id: &AccountId, account_id: &AccountId, token_id: &TokenId, amount: Balance) {
@@ -68,6 +87,17 @@ pub mod emit {
 
     pub fn add_storage(account_id: &AccountId, amount: Balance) {
         log_event("storage", AccountAmountData { account_id, amount });
+    }
+
+    pub fn storage_transferred(account_id: &AccountId, storage: StorageSize) {
+        log_event("storage_transferred", AccountStorageData { account_id, storage });
+    }
+    pub fn transfer_storage_succeeded(account_id: &AccountId, storage: StorageSize) {
+        log_event("transfer_storage_succeeded", AccountStorageData { account_id, storage });
+    }
+
+    pub fn transfer_storage_failed(account_id: &AccountId, storage: StorageSize) {
+        log_event("transfer_storage_failed", AccountStorageData { account_id, storage });
     }
 
     pub fn add_withdraw_succeeded(account_id: &AccountId, amount: Balance) {
